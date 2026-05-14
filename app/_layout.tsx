@@ -47,6 +47,25 @@ export default function RootLayout() {
   }, [theme.colors.background]);
 
   useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const registerServiceWorker = () => {
+      navigator.serviceWorker.register('/sw.js').catch((error) => {
+        console.warn('Service worker registration failed:', error);
+      });
+    };
+
+    if (document.readyState === 'complete') {
+      registerServiceWorker();
+      return;
+    }
+
+    window.addEventListener('load', registerServiceWorker);
+    return () => window.removeEventListener('load', registerServiceWorker);
+  }, []);
+
+  useEffect(() => {
     if (!isLoading && !user) router.replace('/welcome');
   }, [user, isLoading]);
 
