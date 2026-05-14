@@ -7,18 +7,15 @@ import {
   TouchableOpacity,
   Platform,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import { ArrowLeft, Gamepad2 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CrossPlatformWebView from '../components/CrossPlatformWebView';
 
 const THEME_STORAGE_KEY = 'APP_THEME_MODE';
 type ThemeMode = 'light' | 'dark';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function CurioArcadeScreen() {
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
@@ -36,38 +33,36 @@ export default function CurioArcadeScreen() {
     } catch {}
   };
 
-  const webSource =
-    Platform.OS === 'web'
-      ? { uri: `${process.env.EXPO_BASE_URL || ''}/CurioArcadeLoader.html` }
-      : require('../assets/html/CurioArcadeLoader.html');
+  // Web uses a URL string (served from public/), native uses the bundled asset.
+  const webUri = `${process.env.EXPO_BASE_URL || ''}/CurioArcadeLoader.html`;
+  const nativeSource =
+    Platform.OS !== 'web'
+      ? require('../assets/html/CurioArcadeLoader.html')
+      : undefined;
 
   const injectedJavaScript = `
     (function() {
-      // Prevent WebView scrolling/bouncing
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
-      
-      // iOS-specific touch handling
+
       document.addEventListener('touchmove', function(e) {
         if (e.target.tagName !== 'CANVAS') {
           e.preventDefault();
         }
       }, { passive: false });
 
-      // Ensure proper viewport
       const viewport = document.querySelector('meta[name=viewport]');
       if (viewport) {
         viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
       }
 
-      // Signal that WebView is ready
       setTimeout(() => {
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
         }
       }, 100);
 
-      true; // Required for iOS
+      true;
     })();
   `;
 
@@ -94,42 +89,42 @@ export default function CurioArcadeScreen() {
         </Text>
       </View>
 
-      {/* WebView Game Container */}
+      {/* WebView / iframe game container */}
       <View style={styles.webViewWrapper} collapsable={false}>
-        <WebView
-          source={webSource}
+        <CrossPlatformWebView
+          // Used by native WebView only:
+          source={nativeSource}
+          // Used by web iframe only:
+          webSrc={webUri}
           originWhitelist={['*']}
           style={styles.webView}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
+          javaScriptEnabled
+          domStorageEnabled
           scrollEnabled={false}
           bounces={false}
-          allowsInlineMediaPlayback={true}
+          allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           injectedJavaScript={injectedJavaScript}
-          onMessage={(event) => {
+          onMessage={(event: any) => {
             try {
               const data = JSON.parse(event.nativeEvent.data);
               if (data.type === 'ready') {
                 console.log('Arcade loaded successfully');
               }
-            } catch (e) {
-              // Ignore parsing errors
+            } catch {
+              // ignore
             }
           }}
-          onError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            console.warn('WebView error: ', nativeEvent);
+          onError={(syntheticEvent: any) => {
+            console.warn('WebView error: ', syntheticEvent?.nativeEvent);
           }}
-          // iOS-specific props
           {...(Platform.OS === 'ios' && {
             allowsBackForwardNavigationGestures: false,
             automaticallyAdjustContentInsets: false,
-            contentInsetAdjustmentBehavior: 'never',
+            contentInsetAdjustmentBehavior: 'never' as const,
           })}
-          // Android-specific props
           {...(Platform.OS === 'android' && {
-            mixedContentMode: 'always',
+            mixedContentMode: 'always' as const,
             androidHardwareAccelerationDisabled: false,
           })}
         />
