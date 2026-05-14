@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Curio Arcade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <style>
+    :root {
+      --bg-deep: #050b1a;
+      --bg-panel: rgba(20, 30, 60, 0.65);
+      --accent-gold: #ffd43b;
+      --accent-blue: #339af0;
+      --accent-green: #51cf66;
+      --accent-red: #ff6b6b;
+      --text-main: #f8f9fa;
+      --text-dim: #bac8ff;
+      --glass-border: 1px solid rgba(255, 255, 255, 0.15);
+      --glass-highlight: 1px solid rgba(255, 255, 255, 0.3);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 50%, #1c2e4a 0%, #030610 100%);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(77, 171, 247, 0.1), transparent 40%);
+      animation: pulseBg 10s infinite ease-in-out;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    @keyframes pulseBg {
+      0%, 100% { transform: translate(-25%, -25%) scale(1); opacity: 0.5; }
+      50% { transform: translate(-25%, -25%) scale(1.2); opacity: 0.8; }
+    }
+
+    #app {
+      width: 100%;
+      height: 100%;
+      max-width: 100vw;
+      max-height: 100vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform: scale(0.95) translateY(10px);
+      filter: blur(10px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: scale(1) translateY(0);
+      filter: blur(0);
+    }
+
+    h1 {
+      font-size: clamp(24px, 8vw, 36px);
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--accent-blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 8px 0;
+      text-align: center;
+      filter: drop-shadow(0 0 15px rgba(77, 171, 247, 0.4));
+    }
+
+    h2 {
+      font-size: clamp(14px, 4vw, 18px);
+      color: var(--text-dim);
+      font-weight: 400;
+      margin: 0 0 24px 0;
+      text-align: center;
+      opacity: 0.8;
+    }
+
+    .game-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: var(--glass-border);
+      border-top: var(--glass-highlight);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 16px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      box-shadow: var(--glass-shadow);
+      position: relative;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    .game-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%);
+      transform: translateX(-100%);
+      transition: 0.5s;
+    }
+
+    .game-card:active::after { transform: translateX(100%); }
+    .game-card:active { transform: scale(0.96); }
+
+    .game-icon { 
+      font-size: clamp(28px, 8vw, 36px); 
+      margin-bottom: 12px; 
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); 
+    }
+    .game-title { 
+      font-size: clamp(16px, 5vw, 20px); 
+      font-weight: 700; 
+      color: white; 
+      margin-bottom: 6px; 
+    }
+    .game-desc { 
+      font-size: clamp(12px, 3.5vw, 14px); 
+      color: var(--text-dim); 
+      line-height: 1.5; 
+    }
+    .high-score-label {
+      position: absolute;
+      top: 20px; right: 20px;
+      font-size: 11px; font-weight: 700;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(232, 188, 113, 0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .hud {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 12px;
+      padding: 0 8px;
+    }
+    .hud-score {
+      font-size: clamp(24px, 8vw, 36px);
+      font-weight: 900;
+      color: var(--text-main);
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .hud-label {
+      font-size: clamp(10px, 3vw, 12px);
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .game-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      height: min(500px, 60vh);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      border: var(--glass-border);
+      touch-action: none;
+    }
+    
+    canvas {
+      width: 100%; 
+      height: 100%;
+      background: radial-gradient(circle at bottom, #1a2e4d 0%, #050b1a 80%);
+      display: block;
+      touch-action: none;
+      -webkit-user-select: none;
+    }
+
+    .screen-shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+      40%, 60% { transform: translate3d(6px, 0, 0); }
+    }
+
+    .tutorial-text {
+      position: absolute;
+      top: 55%; 
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255,255,255,0.4);
+      pointer-events: none;
+      text-align: center;
+      font-size: clamp(12px, 3.5vw, 14px);
+      font-weight: 600;
+      width: 80%;
+      animation: fadePulse 2s infinite;
+    }
+
+    @keyframes fadePulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(8px, 2vw, 12px);
+      width: 100%;
+      max-width: 380px;
+      perspective: 1000px;
+      padding: 0 10px;
+    }
+
+    .card-container {
+      aspect-ratio: 3/4;
+      position: relative;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .card-container.shake-card { animation: shake 0.4s; }
+
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform-style: preserve-3d;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .card-container.flipped .card-inner { transform: rotateY(180deg); }
+    .card-container.matched .card-inner { 
+      transform: rotateY(180deg) scale(0.9); 
+      box-shadow: 0 0 20px var(--accent-green);
+    }
+
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(24px, 7vw, 32px);
+      border: 1px solid rgba(255,255,255,0.15);
+      background-size: cover;
+    }
+
+    .card-front {
+      background: linear-gradient(135deg, #1e2a45, #0d1424);
+      color: rgba(255,255,255,0.2);
+      font-size: clamp(16px, 5vw, 20px);
+    }
+
+    .card-back {
+      background: linear-gradient(135deg, #2b4a75, #182848);
+      transform: rotateY(180deg);
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .btn-glass {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 12px 28px;
+      border-radius: 50px;
+      font-size: clamp(14px, 4vw, 16px);
+      cursor: pointer;
+      font-weight: 700;
+      margin-top: 12px;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      touch-action: manipulation;
+    }
+    .btn-glass:active { 
+      background: rgba(255, 255, 255, 0.2); 
+      transform: scale(0.95); 
+    }
+
+    .btn-primary {
+      background: linear-gradient(45deg, var(--accent-blue), #3bc9db);
+      border: none;
+      box-shadow: 0 4px 15px rgba(51, 154, 240, 0.4);
+    }
+
+    .btn-back {
+      position: absolute;
+      top: 12px; left: 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-dim);
+      font-size: 18px;
+      width: 36px; 
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 10;
+      touch-action: manipulation;
+    }
+    .btn-back:active { 
+      background: rgba(255,255,255,0.2); 
+      color: white; 
+      transform: scale(0.95); 
+    }
+
+    .countdown-text {
+      font-size: clamp(80px, 25vw, 140px);
+      font-weight: 900;
+      color: white;
+      text-shadow: 0 0 40px var(--accent-gold);
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    .countdown-text.pop { animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.5) rotate(-10deg); }
+      50% { opacity: 1; transform: scale(1.2) rotate(0deg); }
+      100% { opacity: 0; transform: scale(1.5); }
+    }
+
+    .result-emoji {
+      font-size: clamp(60px, 18vw, 80px);
+      margin-bottom: 16px;
+      animation: float 3s ease-in-out infinite;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0); }
+      50% { transform: translateY(-15px) rotate(5deg); }
+    }
+
+    /* iOS safe area support */
+    @supports (padding: max(0px)) {
+      body {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <div class="screen active" id="menuScreen">
+    <h1>Curio Arcade</h1>
+    <h2>Quick collectible challenges</h2>
+
+    <div class="game-card" onclick="gameManager.startCountdown('coin')">
+      <div class="high-score-label">Record: <span id="hs-coin">0</span></div>
+      <div class="game-icon">🪙</div>
+      <div class="game-title">Coin Drop</div>
+      <div class="game-desc">
+        Slide the tray to catch falling Curio coins. Miss one and it's game over!
+      </div>
+    </div>
+
+    <div class="game-card" onclick="gameManager.startCountdown('memory')">
+      <div class="high-score-label">Best: <span id="hs-memory">-</span></div>
+      <div class="game-icon">🎴</div>
+      <div class="game-title">Vault Match</div>
+      <div class="game-desc">
+        Crack the vault by finding matching collectible pairs. Speed counts!
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="countdownScreen">
+    <div class="countdown-text" id="countdownNum">3</div>
+  </div>
+
+  <div class="screen" id="coinScreen">
+    <div class="hud">
+      <div>
+        <div class="hud-label">Score</div>
+        <div class="hud-score" id="coinScore">0</div>
+      </div>
+    </div>
+    <div class="game-container" id="coinContainer">
+      <button class="btn-back" onclick="gameManager.toMenu()">✕</button>
+      <canvas id="coinCanvas"></canvas>
+      <div class="tutorial-text" id="coinTutorial">DRAG TO MOVE</div>
+    </div>
+  </div>
+
+  <div class="screen" id="memoryScreen">
+    <div class="hud" style="max-width: 380px;">
+      <button class="btn-back" style="position:relative; top:auto; left:auto;" onclick="gameManager.toMenu()">✕</button>
+      <div style="text-align: right;">
+        <div class="hud-label">Moves</div>
+        <div class="hud-score" id="memoryMoves">0</div>
+      </div>
+    </div>
+    <div class="memory-grid" id="memoryGrid"></div>
+  </div>
+
+  <div class="screen" id="resultScreen">
+    <div class="result-emoji" id="resultEmoji">🏆</div>
+    <h1 id="resultTitle">Great Job!</h1>
+    <h2 id="resultDesc">You scored 0 points</h2>
+    <button class="btn-glass" onclick="gameManager.toMenu()">Menu</button>
+    <button class="btn-glass btn-primary" id="replayBtn">Play Again</button>
+  </div>
+
+</div>
+
+<script>
+/* Prevent page scroll / bounce on iOS */
+(function() {
+  let lastTouchY = 0;
+  document.addEventListener('touchstart', function(e) {
+    lastTouchY = e.touches[0].clientY;
+  }, { passive: true });
+  
+  document.addEventListener('touchmove', function(e) {
+    const touchY = e.touches[0].clientY;
+    const touchYDelta = touchY - lastTouchY;
+    lastTouchY = touchY;
+    
+    // Only prevent if trying to scroll the body
+    if (e.target === document.body || e.target === document.documentElement) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+})();
+
+/**
+ * SOUND ENGINE - iOS Compatible
+ */
+const SFX = {
+  ctx: null,
+  unlocked: false,
+  
+  init() {
+    if (!this.ctx) {
+      try {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // iOS requires user interaction to unlock audio
+        this.unlock();
+      } catch (e) {
+        console.warn('Audio not supported:', e);
+      }
+    }
+  },
+  
+  unlock() {
+    if (this.unlocked || !this.ctx) return;
+    
+    const unlock = () => {
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().then(() => {
+          this.unlocked = true;
+          console.log('Audio unlocked');
+        });
+      }
+      // Try to play a silent sound
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0;
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(0);
+      osc.stop(0.001);
+      
+      // Remove listeners after first interaction
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('touchend', unlock);
+      document.removeEventListener('click', unlock);
+    };
+    
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('touchend', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+  },
+  
+  createOsc(freq, type, dur, vol = 0.1) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + dur);
+    } catch (e) {
+      console.warn('Audio playback failed:', e);
+    }
+  },
+  
+  coin() {
+    this.createOsc(1000, "sine", 0.1, 0.05);
+    setTimeout(() => this.createOsc(1500, "sine", 0.2, 0.05), 50);
+  },
+  catchGold() {
+    this.createOsc(1200, "square", 0.1, 0.03);
+    setTimeout(() => this.createOsc(1800, "square", 0.3, 0.03), 80);
+  },
+  flip() {
+    this.createOsc(300, "triangle", 0.05, 0.05);
+  },
+  match() {
+    this.createOsc(400, "sine", 0.1, 0.05);
+    setTimeout(() => this.createOsc(600, "sine", 0.1, 0.05), 100);
+    setTimeout(() => this.createOsc(800, "sine", 0.3, 0.05), 200);
+  },
+  fail() {
+    this.createOsc(150, "sawtooth", 0.3, 0.1);
+    this.createOsc(140, "sawtooth", 0.3, 0.1);
+  },
+  win() {
+    [0, 100, 200].forEach((t, i) =>
+      setTimeout(() => this.createOsc(500 + i * 200, "square", 0.2, 0.05), t)
+    );
+  }
+};
+
+/**
+ * STORAGE & UTILS - iOS Compatible
+ */
+const Storage = {
+  get(key) { 
+    try {
+      return localStorage.getItem("curio_" + key) || 0;
+    } catch (e) {
+      console.warn('localStorage read failed:', e);
+      return 0;
+    }
+  },
+  set(key, val) { 
+    try {
+      localStorage.setItem("curio_" + key, val);
+    } catch (e) {
+      console.warn('localStorage write failed:', e);
+    }
+  },
+  updateUI() {
+    document.getElementById("hs-coin").innerText = this.get("coin_hs");
+    const mem = this.get("memory_best");
+    document.getElementById("hs-memory").innerText = mem == 0 ? "-" : mem + " moves";
+  }
+};
+
+function fireConfetti() {
+  const colors = ["#ffd43b", "#339af0", "#ff6b6b", "#ffffff"];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement("div");
+    el.style.cssText = `
+      position:fixed; top:50%; left:50%; width:8px; height:8px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      pointer-events:none; border-radius:50%; z-index:999;
+    `;
+    document.body.appendChild(el);
+    
+    const angle = Math.random() * Math.PI * 2;
+    const vel = 5 + Math.random() * 10;
+    let vx = Math.cos(angle) * vel, vy = Math.sin(angle) * vel;
+    let x = 0, y = 0, grav = 0.2;
+    
+    const anim = setInterval(() => {
+      x += vx; y += vy; vy += grav;
+      el.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+      el.style.opacity = (parseFloat(el.style.opacity || 1) - 0.02).toString();
+      if (parseFloat(el.style.opacity) <= 0) { clearInterval(anim); el.remove(); }
+    }, 16);
+
+    setTimeout(() => { clearInterval(anim); el.remove(); }, 1500);
+  }
+}
+
+/**
+ * COIN CATCH GAME
+ */
+class FloatingText {
+  constructor(x, y, text, color) {
+    this.x = x; this.y = y; this.text = text; this.color = color;
+    this.life = 1.0; this.vy = -2;
+  }
+  update() { this.y += this.vy; this.life -= 0.02; }
+  draw(ctx) {
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.fillStyle = this.color;
+    ctx.font = "bold 28px system-ui";
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+const CoinGame = {
+  canvas: document.getElementById("coinCanvas"),
+  container: document.getElementById("coinContainer"),
+  scoreEl: document.getElementById("coinScore"),
+  tutEl: document.getElementById("coinTutorial"),
+  ctx: null,
+  width: 0, height: 0,
+  active: false,
+  score: 0,
+  paddleX: 0.5,
+  coins: [],
+  particles: [],
+  floaters: [],
+  touching: false,
+
+  init() {
+    this.ctx = this.canvas.getContext("2d");
+    this.resize();
+    
+    // Unified touch/mouse handler
+    const move = (e) => {
+      if (!this.active) return;
+      e.preventDefault();
+      
+      const rect = this.canvas.getBoundingClientRect();
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      this.paddleX = Math.max(0.15, Math.min(0.85, (cx - rect.left) / rect.width));
+      this.tutEl.style.opacity = '0';
+    };
+    
+    // Touch events
+    this.canvas.addEventListener("touchstart", (e) => {
+      this.touching = true;
+      move(e);
+    }, { passive: false });
+    
+    this.canvas.addEventListener("touchmove", move, { passive: false });
+    
+    this.canvas.addEventListener("touchend", () => {
+      this.touching = false;
+    }, { passive: false });
+    
+    // Mouse events for desktop testing
+    this.canvas.addEventListener("mousedown", () => { this.touching = true; });
+    this.canvas.addEventListener("mousemove", move);
+    this.canvas.addEventListener("mouseup", () => { this.touching = false; });
+    this.canvas.addEventListener("mouseleave", () => { this.touching = false; });
+  },
+  
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    this.canvas.width = rect.width * dpr;
+    this.canvas.height = rect.height * dpr;
+    this.width = this.canvas.width;
+    this.height = this.canvas.height;
+    this.ctx.scale(dpr, dpr);
+  },
+  
+  start() {
+    this.active = true;
+    this.score = 0;
+    this.scoreEl.innerText = 0;
+    this.coins = []; 
+    this.particles = []; 
+    this.floaters = [];
+    this.paddleX = 0.5;
+    this.touching = false;
+    this.container.classList.remove("screen-shake");
+    this.tutEl.style.opacity = '1';
+    this.resize();
+    this.spawnTimer = 0;
+    this.lastTime = performance.now();
+    requestAnimationFrame((t) => this.loop(t));
+  },
+  
+  stop() { this.active = false; },
+  
+  spawnCoin() {
+    const type = Math.random() > 0.8 ? "gold" : "silver";
+    this.coins.push({
+      x: Math.random() * 0.8 + 0.1,
+      y: -50,
+      vy: 0,
+      rot: Math.random() * Math.PI,
+      rotSpeed: (Math.random() - 0.5) * 0.1,
+      type: type
+    });
+  },
+  
+  explode(x, y, color) {
+    for(let i=0; i<12; i++) {
+      this.particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 10,
+        vy: (Math.random() - 0.5) * 10,
+        life: 1,
+        color
+      });
+    }
+  },
+
+  loop(now) {
+    if (!this.active) return;
+    const dt = Math.min((now - this.lastTime) / 16, 2);
+    this.lastTime = now;
+
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = this.width / dpr;
+    const displayHeight = this.height / dpr;
+
+    this.ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+    const ramp = Math.min(this.score * 0.05, 3);
+    this.spawnTimer -= dt;
+    if (this.spawnTimer <= 0) {
+      this.spawnCoin();
+      this.spawnTimer = Math.max(30, 80 - (this.score * 2));
+    }
+
+    const pW = displayWidth * 0.22;
+    const pX = displayWidth * this.paddleX;
+    const pY = displayHeight - 60;
+    
+    this.ctx.shadowBlur = 20;
+    this.ctx.shadowColor = "#339af0";
+    this.ctx.fillStyle = "#339af0";
+    this.ctx.beginPath();
+    this.ctx.roundRect(pX - pW/2, pY, pW, 12, 6);
+    this.ctx.fill();
+    this.ctx.shadowBlur = 0;
+    
+    this.ctx.fillStyle = "rgba(255,255,255,0.4)";
+    this.ctx.fillRect(pX - pW/2 + 5, pY + 2, pW - 10, 4);
+
+    this.ctx.font = "32px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    
+    for (let i = this.coins.length - 1; i >= 0; i--) {
+      let c = this.coins[i];
+      c.vy += 0.15 * dt;
+      c.y += (3 + c.vy + ramp) * dt;
+      c.rot += c.rotSpeed * dt;
+
+      const cx = c.x * displayWidth;
+      
+      if (c.y > pY - 20 && c.y < pY + 20 && Math.abs(cx - pX) < pW/2 + 15) {
+        const val = c.type === "gold" ? 5 : 1;
+        this.score += val;
+        this.scoreEl.innerText = this.score;
+        c.type === "gold" ? SFX.catchGold() : SFX.coin();
+        
+        const color = c.type === "gold" ? "#ffd43b" : "#ffffff";
+        this.explode(cx, c.y, color);
+        this.floaters.push(new FloatingText(cx, c.y - 20, "+" + val, color));
+        this.coins.splice(i, 1);
+        continue;
+      }
+
+      if (c.y > displayHeight + 20) {
+        SFX.fail();
+        this.container.classList.remove("screen-shake");
+        void this.container.offsetWidth;
+        this.container.classList.add("screen-shake");
+        
+        gameManager.showResults("coin", this.score);
+        return;
+      }
+
+      this.ctx.save();
+      this.ctx.translate(cx, c.y);
+      this.ctx.rotate(c.rot);
+      this.ctx.fillText(c.type === "gold" ? "💎" : "🪙", 0, 0);
+      this.ctx.restore();
+    }
+
+    this.particles.forEach((p) => {
+      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= 0.05 * dt;
+      this.ctx.fillStyle = p.color;
+      this.ctx.globalAlpha = Math.max(0, p.life);
+      this.ctx.beginPath(); 
+      this.ctx.arc(p.x, p.y, 3, 0, Math.PI*2); 
+      this.ctx.fill();
+    });
+    this.particles = this.particles.filter(p => p.life > 0);
+    
+    this.floaters.forEach(f => { f.update(); f.draw(this.ctx); });
+    this.floaters = this.floaters.filter(f => f.life > 0);
+    
+    this.ctx.globalAlpha = 1;
+    requestAnimationFrame((t) => this.loop(t));
+  },
+};
+
+/**
+ * MEMORY GAME
+ */
+const MemoryGame = {
+  grid: document.getElementById("memoryGrid"),
+  movesEl: document.getElementById("memoryMoves"),
+  icons: ["🪙","🔍","📖","🗝","🏺","💎","🎴","🃏"],
+  flipped: [],
+  locked: false,
+  moves: 0,
+  matches: 0,
+
+  start() {
+    this.moves = 0;
+    this.matches = 0;
+    this.flipped = [];
+    this.locked = false;
+    this.movesEl.innerText = 0;
+    
+    let deck = [...this.icons, ...this.icons].sort(() => Math.random() - 0.5);
+
+    this.grid.innerHTML = "";
+    deck.forEach(icon => {
+      const card = document.createElement("div");
+      card.className = "card-container";
+      card.innerHTML = `
+        <div class="card-inner">
+          <div class="card-front">❓</div>
+          <div class="card-back">${icon}</div>
+        </div>`;
+      
+      // Use touchend for better iOS response
+      const handleFlip = (e) => {
+        e.preventDefault();
+        this.flip(card, icon);
+      };
+      
+      card.addEventListener('touchend', handleFlip, { passive: false });
+      card.addEventListener('click', handleFlip);
+      
+      this.grid.appendChild(card);
+    });
+  },
+
+  flip(card, icon) {
+    if (this.locked || card.classList.contains("flipped") || card.classList.contains("matched")) return;
+    
+    SFX.flip();
+    card.classList.add("flipped");
+    this.flipped.push({ card, icon });
+
+    if (this.flipped.length === 2) {
+      this.locked = true;
+      this.moves++;
+      this.movesEl.innerText = this.moves;
+      this.checkMatch();
+    }
+  },
+
+  checkMatch() {
+    const [c1, c2] = this.flipped;
+    if (c1.icon === c2.icon) {
+      SFX.match();
+      setTimeout(() => {
+        c1.card.classList.add("matched");
+        c2.card.classList.add("matched");
+        const r1 = c1.card.getBoundingClientRect();
+        gameManager.spawnConfettiAt(r1.left + r1.width/2, r1.top + r1.height/2);
+        this.matches++;
+        this.flipped = [];
+        this.locked = false;
+        if (this.matches === 8) setTimeout(() => gameManager.showResults("memory", this.moves), 600);
+      }, 300);
+    } else {
+      SFX.fail();
+      setTimeout(() => {
+        c1.card.classList.add("shake-card");
+        c2.card.classList.add("shake-card");
+      }, 400);
+      setTimeout(() => {
+        c1.card.classList.remove("flipped", "shake-card");
+        c2.card.classList.remove("flipped", "shake-card");
+        this.flipped = [];
+        this.locked = false;
+      }, 1000);
+    }
+  }
+};
+
+/**
+ * GAME MANAGER
+ */
+const gameManager = {
+  gameType: null,
+
+  init() {
+    CoinGame.init();
+    Storage.updateUI();
+    SFX.init();
+    document.getElementById("replayBtn").onclick = () => this.startCountdown(this.gameType);
+    
+    // Notify React Native that we're ready
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
+    }
+  },
+
+  switchScreen(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  },
+
+  startCountdown(type) {
+    SFX.init(); // Re-init in case not unlocked yet
+    this.gameType = type;
+    this.switchScreen("countdownScreen");
+    let count = 3;
+    const el = document.getElementById("countdownNum");
+    
+    const tick = () => {
+      el.innerText = count;
+      el.classList.remove("pop");
+      void el.offsetWidth;
+      el.classList.add("pop");
+      SFX.createOsc(400 + (3-count)*200, "triangle", 0.1);
+      
+      if (count > 0) {
+        count--;
+        setTimeout(tick, 800);
+      } else {
+        setTimeout(() => {
+          if (type === "coin") {
+            this.switchScreen("coinScreen");
+            CoinGame.start();
+          } else {
+            this.switchScreen("memoryScreen");
+            MemoryGame.start();
+          }
+        }, 600);
+      }
+    };
+    tick();
+  },
+
+  toMenu() {
+    CoinGame.stop();
+    this.switchScreen("menuScreen");
+    Storage.updateUI();
+  },
+
+  showResults(game, score) {
+    CoinGame.stop();
+    this.switchScreen("resultScreen");
+    SFX.win();
+    
+    const title = document.getElementById("resultTitle");
+    const desc = document.getElementById("resultDesc");
+    const emoji = document.getElementById("resultEmoji");
+    
+    if (game === "coin") {
+      const hs = parseInt(Storage.get("coin_hs"));
+      if (score > hs) {
+        Storage.set("coin_hs", score);
+        title.innerText = "New Record!";
+        fireConfetti();
+      } else {
+        title.innerText = "Collection Complete";
+      }
+      desc.innerText = `You secured ${score} coins`;
+      emoji.innerText = score > 20 ? "💎" : "🪙";
+    } else {
+      const best = parseInt(Storage.get("memory_best"));
+      if (best === 0 || score < best) {
+        Storage.set("memory_best", score);
+        title.innerText = "New Efficiency Record!";
+        fireConfetti();
+      } else {
+        title.innerText = "Vault Opened";
+      }
+      desc.innerText = `Solved in ${score} moves`;
+      emoji.innerText = score < 16 ? "🧠" : "🔐";
+    }
+  },
+
+  spawnConfettiAt(x, y) {
+    const colors = ["#51cf66", "#ffffff"];
+    for(let i=0; i<10; i++) {
+      const el = document.createElement("div");
+      el.style.cssText = `position:fixed; left:${x}px; top:${y}px; width:4px; height:4px; background:${colors[i%2]}; border-radius:50%; pointer-events:none; z-index:100;`;
+      document.body.appendChild(el);
+      const angle = Math.random()*Math.PI*2;
+      const v = 2 + Math.random()*4;
+      let vx = Math.cos(angle)*v, vy = Math.sin(angle)*v;
+      const anim = setInterval(() => {
+        vx*=0.9; vy*=0.9; 
+        el.style.left = (parseFloat(el.style.left)+vx)+"px";
+        el.style.top = (parseFloat(el.style.top)+vy)+"px";
+        el.style.opacity = (parseFloat(el.style.opacity||1)-0.05).toString();
+        if(el.style.opacity<=0) { clearInterval(anim); el.remove(); }
+      }, 20);
+      setTimeout(() => { clearInterval(anim); el.remove(); }, 1500);
+    }
+  }
+};
+
+// Initialize on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => gameManager.init());
+} else {
+  gameManager.init();
+}
+
+// Handle window resize for responsive canvas
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    if (CoinGame.active) {
+      CoinGame.resize();
+    }
+  }, 250);
+});
+</script>
+</body>
+</html>
